@@ -45,3 +45,13 @@ module "dynamodb" {
   ttl_enabled         = var.dynamodb_ttl_enabled
   enable_audit        = var.dynamodb_enable_audit
 }
+
+module "sqs" {
+  source = "./modules/sqs"
+
+  project     = var.project
+  environment = var.environment
+
+  max_receive_count     = var.sqs_max_receive_count
+  enable_notifications  = var.sqs_enable_notifications
+}

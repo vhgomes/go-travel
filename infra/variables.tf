@@ -120,3 +120,16 @@ variable "dynamodb_enable_audit" {
   type        = bool
   default     = false
 }
+
+# SQS Variables
+variable "sqs_max_receive_count" {
+  description = "Número máximo de tentativas antes de enviar para DLQ"
+  type        = number
+  default     = 3
+}
+
+variable "sqs_enable_notifications" {
+  description = "Criar fila de notificações (não FIFO)"
+  type        = bool
+  default     = true
+}
