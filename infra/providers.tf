@@ -1,7 +1,7 @@
 provider "aws" {
   region = var.aws_region
 
-  access_key = "test"
+  access_key = "048408301323"
   secret_key = "test"
 
   endpoints {

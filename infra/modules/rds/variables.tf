@@ -1,34 +1,29 @@
-variable "aws_region" {
-  description = "Região AWS"
-  type        = string
-  default     = "us-east-1"
-}
-
 variable "project" {
   description = "Nome do projeto"
   type        = string
-  default     = "travelgo"
 }
 
 variable "environment" {
   description = "Ambiente (dev, staging, prod)"
   type        = string
-  default     = "dev"
+}
+
+variable "vpc_id" {
+  description = "ID da VPC onde o RDS será criado"
+  type        = string
 }
 
 variable "vpc_cidr" {
-  description = "CIDR da VPC"
+  description = "CIDR da VPC (para liberar acesso no Security Group)"
   type        = string
-  default     = "10.0.0.0/16"
 }
 
-variable "availability_zones" {
-  description = "Zonas de disponibilidade"
+variable "private_subnet_ids" {
+  description = "Lista de IDs das subnets privadas"
   type        = list(string)
-  default     = ["us-east-1a", "us-east-1b"]
 }
 
-# RDS Variables
+# Banco
 variable "database_name" {
   description = "Nome do banco de dados"
   type        = string
@@ -42,12 +37,12 @@ variable "master_username" {
 }
 
 variable "master_password" {
-  description = "Senha mestre do banco (use variável de ambiente TF_VAR_master_password)"
+  description = "Senha mestre do banco (use uma variável sensível)"
   type        = string
   sensitive   = true
-  default     = "admin123"  # Mude isso!
 }
 
+# Engine
 variable "engine_version" {
   description = "Versão do Aurora PostgreSQL"
   type        = string
@@ -60,44 +55,48 @@ variable "engine_mode" {
   default     = "serverless"
 }
 
+# Instância
 variable "instance_class" {
-  description = "Classe da instância"
+  description = "Classe da instância (ex: db.t4g.small)"
   type        = string
   default     = "db.t4g.small"
 }
 
 variable "instance_count" {
-  description = "Número de instâncias no cluster"
+  description = "Número de instâncias no cluster (1 para dev, 2 para prod)"
   type        = number
   default     = 1
 }
 
+# Escalabilidade Serverless
 variable "min_capacity" {
-  description = "Capacidade mínima (Serverless v2)"
+  description = "Capacidade mínima (ACUs) para Serverless v2"
   type        = number
   default     = 0.5
 }
 
 variable "max_capacity" {
-  description = "Capacidade máxima (Serverless v2)"
+  description = "Capacidade máxima (ACUs) para Serverless v2"
   type        = number
   default     = 4
 }
 
+# Backup
 variable "backup_retention_days" {
-  description = "Dias de retenção de backup"
+  description = "Dias de retenção de backup (0 desabilita)"
   type        = number
   default     = 7
 }
 
+# Proteção
 variable "deletion_protection" {
-  description = "Proteger contra deleção acidental"
+  description = "Proteger o cluster contra deleção acidental"
   type        = bool
   default     = false
 }
 
 variable "apply_immediately" {
-  description = "Aplicar mudanças imediatamente"
+  description = "Aplicar mudanças imediatamente (true) ou na janela de manutenção"
   type        = bool
   default     = false
 }
