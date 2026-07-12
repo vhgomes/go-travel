@@ -34,3 +34,14 @@ module "rds" {
   deletion_protection   = var.deletion_protection
   apply_immediately     = var.apply_immediately
 }
+
+module "dynamodb" {
+  source = "./modules/dynamodb"
+
+  project     = var.project
+  environment = var.environment
+
+  deletion_protection = var.dynamodb_deletion_protection
+  ttl_enabled         = var.dynamodb_ttl_enabled
+  enable_audit        = var.dynamodb_enable_audit
+}

@@ -101,3 +101,22 @@ variable "apply_immediately" {
   type        = bool
   default     = false
 }
+
+# DynamoDB Variables
+variable "dynamodb_deletion_protection" {
+  description = "Proteger tabelas DynamoDB contra deleção acidental"
+  type        = bool
+  default     = false
+}
+
+variable "dynamodb_ttl_enabled" {
+  description = "Habilitar TTL na tabela principal de estado"
+  type        = bool
+  default     = true
+}
+
+variable "dynamodb_enable_audit" {
+  description = "Criar tabela de auditoria para rastrear mudanças de estado"
+  type        = bool
+  default     = false
+}
