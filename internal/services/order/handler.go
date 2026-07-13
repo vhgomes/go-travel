@@ -26,6 +26,7 @@ type createOrderRequest struct {
 }
 
 func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	var req createOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "invalid request body", http.StatusBadRequest)
@@ -58,7 +59,7 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		Currency:     Currency(req.Currency),
 	}
 
-	if err := h.svc.Create(order); err != nil {
+	if err := h.svc.Create(ctx, order); err != nil {
 		http.Error(w, "failed to create order", http.StatusInternalServerError)
 		return
 	}
