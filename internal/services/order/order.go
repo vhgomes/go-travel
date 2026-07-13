@@ -31,7 +31,7 @@ type Order struct {
 	PaymentToken string
 	TotalAmount  int64 // em centavos
 	Currency     Currency
-	status       Status
+	Status       Status
 	CreatedAt    time.Time
 	UpdatedAt    time.Time
 }
