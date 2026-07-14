@@ -3,25 +3,26 @@ package order
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/vhgomes/go-travel/internal/services/flight"
+	"github.com/vhgomes/go-travel/internal/services/hotel"
 )
 
 type OrderService struct {
-	repo OrderRepository
-	sqs  *sqs.SQS
+	hotelService  *hotel.HotelService
+	flightService *flight.FlightService
+	repo          OrderRepository
+	sqs           *sqs.SQS
 }
 
-func NewOrderService(repo OrderRepository, sqs *sqs.SQS) *OrderService {
-	return &OrderService{repo: repo, sqs: sqs}
+func NewOrderService(repo OrderRepository, flightService *flight.FlightService, hotelService *hotel.HotelService, sqs *sqs.SQS) *OrderService {
+	return &OrderService{repo: repo, flightService: flightService, hotelService: hotelService, sqs: sqs}
 }
 
-// TODO: requisição para o serviço de pagamento, para validar o token de pagamento e processar o pagamento
-// TODO: caso o pagamento seja aprovado e os serviços de voo e hotel estejam disponíveis, criar o pedido no banco de dados com status "pending"
-// TODO: publicar uma mensagem na fila do SQS para processar o pedido
 func (s *OrderService) Create(ctx context.Context, order Order) error {
-	// TODO: Verificar se existe duplicidade de pedido, para evitar que o mesmo pedido seja criado mais de uma vez (user_id ter o mesmo flight_id e hotel_id e com status pending)
 	pgUserID := pgtype.UUID{
 		Bytes: order.UserID,
 		Valid: true,
@@ -33,14 +34,49 @@ func (s *OrderService) Create(ctx context.Context, order Order) error {
 		return fmt.Errorf("get orders by user id failed")
 	}
 
-	// TODO: verificação meio ruim, creio que eu consiga melhorar
 	for _, o := range orders {
 		if o.FlightID == order.FlightID && o.HotelID == order.HotelID && o.Status == Pending {
 			return fmt.Errorf("order duplicated")
 		}
 	}
 
-	// TODO: requisição para os servições de voo e hotel, para validar a disponibilidade.
+	flight, err := s.flightService.GetByID(ctx, order.FlightID)
+	if err != nil {
+		return err
+	}
 
-	return s.repo.Create(ctx, order)
+	hotel, err := s.hotelService.GetByID(ctx, order.HotelID)
+	if err != nil {
+		return err
+	}
+
+	if flight.AvailableSeats <= 0 || hotel.RoomsAvailable <= 0 {
+		return fmt.Errorf("flight or hotel not available")
+	}
+
+	if err := s.flightService.ReserveSeats(ctx, order.FlightID, 1); err != nil {
+		return err
+	}
+
+	if err := s.hotelService.ReserveRooms(ctx, order.HotelID, 1); err != nil {
+		return err
+	}
+
+	totalAmount := flight.FlightPrice + hotel.HotelPrice
+
+	order.CreatedAt = time.Now()
+	order.UpdatedAt = time.Now()
+	order.Status = Pending
+	order.TotalAmount = totalAmount
+
+	if err := s.repo.Create(ctx, order); err != nil {
+		return err
+	}
+
+	// TODO: enviar para o SQS
+	if err := s.sqs.SendOrder(ctx, order); err != nil {
+		return err
+	}
+
+	return nil
 }
