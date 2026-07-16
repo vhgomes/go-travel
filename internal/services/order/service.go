@@ -29,16 +29,13 @@ func (s *OrderService) Create(ctx context.Context, order Order) error {
 		Valid: true,
 	}
 
-	orders, err := s.repo.GetOrdersByUserID(ctx, pgUserID)
-
+	exists, err := s.repo.CheckPendingOrderExists(ctx, pgUserID, order.FlightID, order.HotelID)
 	if err != nil {
-		return fmt.Errorf("get orders by user id failed")
+		return fmt.Errorf("checking pending order: %w", err)
 	}
 
-	for _, o := range orders {
-		if o.FlightID == order.FlightID && o.HotelID == order.HotelID && o.Status == Pending {
-			return fmt.Errorf("order duplicated")
-		}
+	if exists {
+		return fmt.Errorf("order duplicated")
 	}
 
 	flight, err := s.flightService.GetByID(ctx, order.FlightID)
