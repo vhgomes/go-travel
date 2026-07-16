@@ -33,6 +33,7 @@ func (r *OrderRepository) Create(ctx context.Context, order Order) error {
 		TotalAmount: pgtype.Numeric{
 			Int:   big.NewInt(order.TotalAmount),
 			Valid: true,
+			Exp:   -2,
 		},
 		Currency: string(order.Currency),
 	})
@@ -65,4 +66,18 @@ func (r *OrderRepository) GetOrdersByUserID(ctx context.Context, pgUserID pgtype
 	}
 
 	return result, nil
+}
+
+func (r *OrderRepository) CheckPendingOrderExists(ctx context.Context, userID pgtype.UUID, flightID, hotelID string) (bool, error) {
+	count, err := r.q.CheckPendingOrderExists(ctx, repository.CheckPendingOrderExistsParams{
+		UserID:   userID,
+		FlightID: flightID,
+		HotelID:  hotelID,
+	})
+
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
 }
