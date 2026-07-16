@@ -2,24 +2,25 @@ package order
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
-	"github.com/aws/aws-sdk-go/service/sqs"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/vhgomes/go-travel/internal/services/flight"
 	"github.com/vhgomes/go-travel/internal/services/hotel"
+	"github.com/vhgomes/go-travel/internal/services/sqs"
 )
 
 type OrderService struct {
 	hotelService  *hotel.HotelService
 	flightService *flight.FlightService
 	repo          OrderRepository
-	sqs           *sqs.SQS
+	producer      *sqs.Producer
 }
 
-func NewOrderService(repo OrderRepository, flightService *flight.FlightService, hotelService *hotel.HotelService, sqs *sqs.SQS) *OrderService {
-	return &OrderService{repo: repo, flightService: flightService, hotelService: hotelService, sqs: sqs}
+func NewOrderService(repo OrderRepository, flightService *flight.FlightService, hotelService *hotel.HotelService, producer *sqs.Producer) *OrderService {
+	return &OrderService{repo: repo, flightService: flightService, hotelService: hotelService, producer: producer}
 }
 
 func (s *OrderService) Create(ctx context.Context, order Order) error {
@@ -73,9 +74,13 @@ func (s *OrderService) Create(ctx context.Context, order Order) error {
 		return err
 	}
 
-	// TODO: enviar para o SQS
-	if err := s.sqs.SendOrder(ctx, order); err != nil {
-		return err
+	orderJSON, err := json.Marshal(order)
+	if err != nil {
+		return fmt.Errorf("marshaling order to JSON: %w", err)
+	}
+
+	if _, err := s.producer.SendMessage(ctx, string(orderJSON), nil); err != nil {
+		return fmt.Errorf("sending order to SQS: %w", err)
 	}
 
 	return nil
