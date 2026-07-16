@@ -15,12 +15,12 @@ import (
 type OrderService struct {
 	hotelService  *hotel.HotelService
 	flightService *flight.FlightService
-	repo          OrderRepository
+	orderRepo     OrderRepository
 	producer      *sqs.Producer
 }
 
-func NewOrderService(repo OrderRepository, flightService *flight.FlightService, hotelService *hotel.HotelService, producer *sqs.Producer) *OrderService {
-	return &OrderService{repo: repo, flightService: flightService, hotelService: hotelService, producer: producer}
+func NewOrderService(orderRepo OrderRepository, flightService *flight.FlightService, hotelService *hotel.HotelService, producer *sqs.Producer) *OrderService {
+	return &OrderService{orderRepo: orderRepo, flightService: flightService, hotelService: hotelService, producer: producer}
 }
 
 func (s *OrderService) Create(ctx context.Context, order Order) error {
@@ -29,7 +29,7 @@ func (s *OrderService) Create(ctx context.Context, order Order) error {
 		Valid: true,
 	}
 
-	exists, err := s.repo.CheckPendingOrderExists(ctx, pgUserID, order.FlightID, order.HotelID)
+	exists, err := s.orderRepo.CheckPendingOrderExists(ctx, pgUserID, order.FlightID, order.HotelID)
 	if err != nil {
 		return fmt.Errorf("checking pending order: %w", err)
 	}
@@ -67,7 +67,7 @@ func (s *OrderService) Create(ctx context.Context, order Order) error {
 	order.Status = Pending
 	order.TotalAmount = totalAmount
 
-	if err := s.repo.Create(ctx, order); err != nil {
+	if err := s.orderRepo.Create(ctx, order); err != nil {
 		return err
 	}
 
@@ -76,7 +76,7 @@ func (s *OrderService) Create(ctx context.Context, order Order) error {
 		return fmt.Errorf("marshaling order to JSON: %w", err)
 	}
 
-	if _, err := s.producer.SendMessage(ctx, "saga-start.fifo", string(orderJSON), nil); err != nil {
+	if _, err := s.producer.SendMessage(ctx, string(orderJSON), nil); err != nil {
 		return fmt.Errorf("sending order to SQS: %w", err)
 	}
 
