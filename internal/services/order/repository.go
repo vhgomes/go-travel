@@ -2,16 +2,19 @@ package order
 
 import (
 	"context"
-	"database/sql"
 	"math/big"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vhgomes/go-travel/internal/repository"
 )
 
 type OrderRepository struct {
-	db *sql.DB
-	q  *repository.Queries
+	q *repository.Queries
+}
+
+func NewOrderRepository(pool *pgxpool.Pool) *OrderRepository {
+	return &OrderRepository{q: repository.New(pool)}
 }
 
 func (r *OrderRepository) Create(ctx context.Context, order Order) error {
