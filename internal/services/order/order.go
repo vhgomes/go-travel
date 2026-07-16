@@ -24,14 +24,14 @@ const (
 )
 
 type Order struct {
-	ID           uuid.UUID
-	UserID       uuid.UUID
-	FlightID     string
-	HotelID      string
-	PaymentToken string
-	TotalAmount  int64 // em centavos
-	Currency     Currency
-	Status       Status
-	CreatedAt    time.Time
-	UpdatedAt    time.Time
+	ID           uuid.UUID `json:"id"`
+	UserID       uuid.UUID `json:"user_id"`
+	FlightID     string    `json:"flight_id"`
+	HotelID      string    `json:"hotel_id"`
+	PaymentToken string    `json:"payment_token"`
+	TotalAmount  int64     `json:"total_amount"` // em centavos
+	Currency     Currency  `json:"currency"`
+	Status       Status    `json:"status"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
 }
