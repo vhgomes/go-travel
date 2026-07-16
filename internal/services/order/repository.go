@@ -9,15 +9,19 @@ import (
 	"github.com/vhgomes/go-travel/internal/repository"
 )
 
-type OrderRepository struct {
+// PostgresOrderRepository é a implementação de OrderRepository baseada em
+// Postgres (via sqlc + pgx). Para testes, use InMemoryOrderRepository.
+type PostgresOrderRepository struct {
 	q *repository.Queries
 }
 
-func NewOrderRepository(pool *pgxpool.Pool) *OrderRepository {
-	return &OrderRepository{q: repository.New(pool)}
+func NewOrderRepository(pool *pgxpool.Pool) *PostgresOrderRepository {
+	return &PostgresOrderRepository{q: repository.New(pool)}
 }
 
-func (r *OrderRepository) Create(ctx context.Context, order Order) error {
+var _ OrderRepository = (*PostgresOrderRepository)(nil)
+
+func (r *PostgresOrderRepository) Create(ctx context.Context, order Order) error {
 	_, err := r.q.CreateOrder(ctx, repository.CreateOrderParams{
 		ID: pgtype.UUID{
 			Bytes: order.ID,
@@ -40,7 +44,7 @@ func (r *OrderRepository) Create(ctx context.Context, order Order) error {
 	return err
 }
 
-func (r *OrderRepository) GetOrdersByUserID(ctx context.Context, pgUserID pgtype.UUID) ([]Order, error) {
+func (r *PostgresOrderRepository) GetOrdersByUserID(ctx context.Context, pgUserID pgtype.UUID) ([]Order, error) {
 	orders, err := r.q.GetOrdersByUserID(ctx, repository.GetOrdersByUserIDParams{
 		UserID: pgUserID,
 	})
@@ -68,7 +72,7 @@ func (r *OrderRepository) GetOrdersByUserID(ctx context.Context, pgUserID pgtype
 	return result, nil
 }
 
-func (r *OrderRepository) CheckPendingOrderExists(ctx context.Context, userID pgtype.UUID, flightID, hotelID string) (bool, error) {
+func (r *PostgresOrderRepository) CheckPendingOrderExists(ctx context.Context, userID pgtype.UUID, flightID, hotelID string) (bool, error) {
 	count, err := r.q.CheckPendingOrderExists(ctx, repository.CheckPendingOrderExistsParams{
 		UserID:   userID,
 		FlightID: flightID,
