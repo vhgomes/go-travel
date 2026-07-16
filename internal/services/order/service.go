@@ -76,7 +76,7 @@ func (s *OrderService) Create(ctx context.Context, order Order) error {
 		return fmt.Errorf("marshaling order to JSON: %w", err)
 	}
 
-	if _, err := s.producer.SendMessage(ctx, string(orderJSON), nil); err != nil {
+	if _, err := s.producer.SendMessage(ctx, "saga-start.fifo", string(orderJSON), nil); err != nil {
 		return fmt.Errorf("sending order to SQS: %w", err)
 	}
 

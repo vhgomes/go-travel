@@ -21,7 +21,7 @@ func NewProducer(client *sqs.Client, queueURL string) *Producer {
 	}
 }
 
-func (p *Producer) SendMessage(ctx context.Context, body string, attributes map[string]string) (string, error) {
+func (p *Producer) SendMessage(ctx context.Context, queue string, body string, attributes map[string]string) (string, error) {
 	messageAttributes := make(map[string]types.MessageAttributeValue)
 
 	for key, value := range attributes {
@@ -32,7 +32,7 @@ func (p *Producer) SendMessage(ctx context.Context, body string, attributes map[
 	}
 
 	input := &sqs.SendMessageInput{
-		QueueUrl:          aws.String(p.queueURL),
+		QueueUrl:          aws.String(queue),
 		MessageBody:       aws.String(body),
 		MessageAttributes: messageAttributes,
 	}
