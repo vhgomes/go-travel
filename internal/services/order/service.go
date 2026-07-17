@@ -16,10 +16,10 @@ type OrderService struct {
 	hotelService  *hotel.HotelService
 	flightService *flight.FlightService
 	orderRepo     OrderRepository
-	producer      *sqs.Producer
+	producer      sqs.MessageProducer
 }
 
-func NewOrderService(orderRepo OrderRepository, flightService *flight.FlightService, hotelService *hotel.HotelService, producer *sqs.Producer) *OrderService {
+func NewOrderService(orderRepo OrderRepository, flightService *flight.FlightService, hotelService *hotel.HotelService, producer sqs.MessageProducer) *OrderService {
 	return &OrderService{orderRepo: orderRepo, flightService: flightService, hotelService: hotelService, producer: producer}
 }
 
