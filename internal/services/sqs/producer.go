@@ -9,6 +9,10 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
 )
 
+type MessageProducer interface {
+	SendMessage(ctx context.Context, body string, attributes map[string]string) (string, error)
+}
+
 type Producer struct {
 	client   *sqs.Client
 	queueURL string
