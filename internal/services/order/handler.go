@@ -2,9 +2,12 @@ package order
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/google/uuid"
+	"github.com/vhgomes/go-travel/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type OrderHandler struct {
@@ -29,9 +32,12 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	var req createOrderRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		logger.Error("invalid request body", fmt.Errorf("decode error: %w", err))
 		http.Error(w, "invalid request body", http.StatusBadRequest)
 		return
 	}
+
+	logger.Info("create_order_request_received", zap.String("user_id", req.UserID), zap.String("flight_id", req.FlightID), zap.String("hotel_id", req.HotelID))
 
 	userID, err := uuid.Parse(req.UserID)
 	if err != nil {
@@ -60,11 +66,16 @@ func (h *OrderHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.svc.Create(ctx, order); err != nil {
+		logger.Error("failed to create order", fmt.Errorf("service error: %w", err), zap.String("order_id", order.ID.String()), zap.String("user_id", order.UserID.String()))
 		http.Error(w, "failed to create order", http.StatusInternalServerError)
 		return
 	}
 
+	logger.Info("order_created", zap.String("order_id", order.ID.String()), zap.String("user_id", order.UserID.String()))
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-	_ = json.NewEncoder(w).Encode(map[string]string{"id": order.ID.String()})
+	if err := json.NewEncoder(w).Encode(map[string]string{"id": order.ID.String()}); err != nil {
+		logger.Error("failed to encode response", fmt.Errorf("encode error: %w", err), zap.String("order_id", order.ID.String()))
+	}
 }

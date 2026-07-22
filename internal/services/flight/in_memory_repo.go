@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"github.com/vhgomes/go-travel/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type InMemoryFlightRepository struct {
@@ -23,6 +26,7 @@ func (r *InMemoryFlightRepository) GetByID(ctx context.Context, id string) (*Fli
 
 	flight, exists := r.flights[id]
 	if !exists {
+		logger.Error("flight not found", fmt.Errorf("not found: %s", id), zap.String("flight_id", id))
 		return nil, fmt.Errorf("flight not found: %s", id)
 	}
 
@@ -52,10 +56,12 @@ func (r *InMemoryFlightRepository) ReserveSeats(ctx context.Context, flightID st
 
 	flight, exists := r.flights[flightID]
 	if !exists {
+		logger.Error("flight not found for reserve", fmt.Errorf("not found: %s", flightID), zap.String("flight_id", flightID))
 		return fmt.Errorf("flight not found: %s", flightID)
 	}
 
 	if flight.AvailableSeats < seats {
+		logger.Warn("insufficient seats available", zap.Int("requested", seats), zap.Int("available", flight.AvailableSeats), zap.String("flight_id", flightID))
 		return fmt.Errorf("insufficient seats available: requested %d, available %d", seats, flight.AvailableSeats)
 	}
 
@@ -95,6 +101,7 @@ func (r *InMemoryFlightRepository) UpdateAvailableSeats(ctx context.Context, fli
 
 	flight, exists := r.flights[flightID]
 	if !exists {
+		logger.Error("flight not found for update", fmt.Errorf("not found: %s", flightID), zap.String("flight_id", flightID))
 		return fmt.Errorf("flight not found: %s", flightID)
 	}
 

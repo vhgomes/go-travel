@@ -8,6 +8,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
+	"github.com/vhgomes/go-travel/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type Config struct {
@@ -50,6 +52,7 @@ func NewSQSClient(ctx context.Context, cfg *Config) (*sqs.Client, error) {
 
 	awsCfg, err := config.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
+		logger.Error("loading AWS config failed", fmt.Errorf("aws config error: %w", err))
 		return nil, fmt.Errorf("loading AWS config: %w", err)
 	}
 
@@ -59,7 +62,9 @@ func NewSQSClient(ctx context.Context, cfg *Config) (*sqs.Client, error) {
 		sqsOpts = append(sqsOpts, func(o *sqs.Options) {
 			o.BaseEndpoint = &cfg.Endpoint
 		})
+		logger.Info("using custom aws endpoint", zap.String("endpoint", cfg.Endpoint))
 	}
 
+	logger.Info("aws config loaded", zap.String("region", cfg.Region))
 	return sqs.NewFromConfig(awsCfg, sqsOpts...), nil
 }

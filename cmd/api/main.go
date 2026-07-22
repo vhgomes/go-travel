@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,11 +17,14 @@ import (
 	"github.com/vhgomes/go-travel/internal/services/order"
 	sqssvc "github.com/vhgomes/go-travel/internal/services/sqs"
 	"github.com/vhgomes/go-travel/pkg/config"
+	"github.com/vhgomes/go-travel/pkg/logger"
+	"go.uber.org/zap"
 )
 
 func main() {
 	if err := run(); err != nil {
-		log.Fatalf("fatal: %v", err)
+		logger.Error("fatal", err)
+		os.Exit(1)
 	}
 }
 
@@ -44,7 +46,7 @@ func run() error {
 	if err := pool.Ping(ctx); err != nil {
 		return fmt.Errorf("pinging postgres: %w", err)
 	}
-	log.Println("connected to postgres")
+	logger.Info("connected to postgres")
 
 	awsCfg := config.LoadFromEnv()
 	sqsClient, err := config.NewSQSClient(ctx, awsCfg)
@@ -75,7 +77,8 @@ func run() error {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /orders", orderHandler.CreateOrder)
-	mux.HandleFunc("GET /healthz", healthCheck(pool))
+	mux.HandleFunc("GET /healthz", livenessHandler())
+	mux.HandleFunc("GET /ready", readinessHandler(pool, queueManager, sagaQueueName))
 
 	port := getEnv("PORT", "8080")
 	srv := &http.Server{
@@ -86,7 +89,7 @@ func run() error {
 
 	serverErr := make(chan error, 1)
 	go func() {
-		log.Printf("TravelGo API listening on :%s", port)
+		logger.Info("TravelGo API listening", zap.String("port", port))
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
 			serverErr <- err
 		}
@@ -95,7 +98,7 @@ func run() error {
 
 	select {
 	case <-ctx.Done():
-		log.Println("shutdown signal received")
+		logger.Info("shutdown signal received")
 	case err := <-serverErr:
 		if err != nil {
 			return fmt.Errorf("http server: %w", err)
@@ -109,16 +112,31 @@ func run() error {
 		return fmt.Errorf("shutting down http server: %w", err)
 	}
 
-	log.Println("server stopped gracefully")
+	logger.Info("server stopped gracefully")
 	return nil
 }
 
-func healthCheck(pool *pgxpool.Pool) http.HandlerFunc {
+func livenessHandler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if err := pool.Ping(r.Context()); err != nil {
-			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	}
+}
+func readinessHandler(pool *pgxpool.Pool, qm *sqssvc.QueueManager, sagaQueueName string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		defer cancel()
+
+		if err := pool.Ping(ctx); err != nil {
+			http.Error(w, "postgres unavailable", http.StatusServiceUnavailable)
 			return
 		}
+
+		if _, err := qm.GetQueueURL(ctx, sagaQueueName); err != nil {
+			http.Error(w, "sqs unavailable", http.StatusServiceUnavailable)
+			return
+		}
+
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	}

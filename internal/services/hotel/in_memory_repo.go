@@ -4,6 +4,9 @@ import (
 	"context"
 	"fmt"
 	"sync"
+
+	"github.com/vhgomes/go-travel/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type InMemoryHotelRepository struct {
@@ -23,6 +26,7 @@ func (r *InMemoryHotelRepository) GetByID(ctx context.Context, id string) (*Hote
 
 	hotel, exists := r.hotels[id]
 	if !exists {
+		logger.Error("hotel not found", fmt.Errorf("not found: %s", id), zap.String("hotel_id", id))
 		return nil, fmt.Errorf("hotel not found: %s", id)
 	}
 
@@ -52,10 +56,12 @@ func (r *InMemoryHotelRepository) ReserveRooms(ctx context.Context, hotelID stri
 
 	hotel, exists := r.hotels[hotelID]
 	if !exists {
+		logger.Error("hotel not found for reserve", fmt.Errorf("not found: %s", hotelID), zap.String("hotel_id", hotelID))
 		return fmt.Errorf("hotel not found: %s", hotelID)
 	}
 
 	if hotel.RoomsAvailable < rooms {
+		logger.Warn("insufficient rooms available", zap.Int("requested", rooms), zap.Int("available", hotel.RoomsAvailable), zap.String("hotel_id", hotelID))
 		return fmt.Errorf("insufficient rooms available: requested %d, available %d", rooms, hotel.RoomsAvailable)
 	}
 
@@ -81,6 +87,7 @@ func (r *InMemoryHotelRepository) Create(ctx context.Context, hotel *Hotel) erro
 	defer r.mu.Unlock()
 
 	if _, exists := r.hotels[hotel.ID]; exists {
+		logger.Warn("hotel already exists", zap.String("hotel_id", hotel.ID))
 		return fmt.Errorf("hotel already exists: %s", hotel.ID)
 	}
 
@@ -95,6 +102,7 @@ func (r *InMemoryHotelRepository) UpdateAvailableRooms(ctx context.Context, hote
 
 	hotel, exists := r.hotels[hotelID]
 	if !exists {
+		logger.Error("hotel not found for update", fmt.Errorf("not found: %s", hotelID), zap.String("hotel_id", hotelID))
 		return fmt.Errorf("hotel not found: %s", hotelID)
 	}
 

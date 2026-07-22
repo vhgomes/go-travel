@@ -7,6 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/vhgomes/go-travel/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type MessageProducer interface {
@@ -43,8 +45,12 @@ func (p *Producer) SendMessage(ctx context.Context, body string, attributes map[
 
 	result, err := p.client.SendMessage(ctx, input)
 	if err != nil {
+		logger.Error("sending message failed", fmt.Errorf("sqs send error: %w", err), zap.String("queue_url", p.queueURL))
 		return "", fmt.Errorf("sending message: %w", err)
 	}
 
-	return *result.MessageId, nil
+	messageID := aws.ToString(result.MessageId)
+	logger.Info("message_sent", zap.String("message_id", messageID), zap.String("queue_url", p.queueURL))
+
+	return messageID, nil
 }

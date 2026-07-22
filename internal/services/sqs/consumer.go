@@ -7,6 +7,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/sqs"
 	"github.com/aws/aws-sdk-go-v2/service/sqs/types"
+	"github.com/vhgomes/go-travel/pkg/logger"
+	"go.uber.org/zap"
 )
 
 type MessageHandler func(ctx context.Context, message *types.Message) error
@@ -71,12 +73,12 @@ func (c *Consumer) Poll(ctx context.Context, handler MessageHandler, maxMessages
 
 			for _, msg := range messages {
 				if err := handler(ctx, &msg); err != nil {
-					fmt.Printf("error handling message %s: %v\n", *msg.MessageId, err)
+					logger.Error("error handling message", err, zap.String("message_id", aws.ToString(msg.MessageId)))
 					continue
 				}
 
 				if err := c.DeleteMessage(ctx, *msg.ReceiptHandle); err != nil {
-					fmt.Printf("error deleting message %s: %v\n", *msg.MessageId, err)
+					logger.Error("error deleting message", err, zap.String("message_id", aws.ToString(msg.MessageId)), zap.String("receipt_handle", *msg.ReceiptHandle))
 				}
 			}
 		}
